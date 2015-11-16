@@ -112,9 +112,6 @@ function Mapper($outputElement, $unprocessableLocations) {
             }
             listItemHTML += '</tr>';
             if (debug) {
-
-            }
-            if (debug) {
                 console.log('generated row', listItemHTML);
             }
             that.$outputElement.append(listItemHTML);
