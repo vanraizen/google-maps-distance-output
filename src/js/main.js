@@ -14,7 +14,7 @@ $(document).ready(function() {
  */
 function Mapper($outputElement, $unprocessableLocations) {
 
-    var debug = false; //this could be cleaned up into a discreet print() function that reads the flag
+    var DEBUG = false;
     var that = this;
     this.startingAddress = '510 Victoria, Venice, CA';
     this.$outputElement = $outputElement;
@@ -54,14 +54,10 @@ function Mapper($outputElement, $unprocessableLocations) {
                 alert('Error was: ' + status);
             } else {
                 destinationList = response.destinationAddresses;
-                if (debug) {
-                    console.log(response);
-                }
+                log(response);
                 var results = response.rows[0].elements;
                 for (i = 0; i < results.length; i++) {
-                    if (debug) {
-                        console.log(destinationList[i] + ": ", results[i]);
-                    }
+                    log(destinationList[i] + ": ", results[i]);
                     if (results[i].status === 'OK') {
                         distance = results[i].distance.value;
                         location = destinationList[i];
@@ -69,14 +65,10 @@ function Mapper($outputElement, $unprocessableLocations) {
                         distanceMap[distance].push(location);
                     } else {
                         that.$unprocessableLocations.append('<li>' + destinationList[i] + '</li>');
-                        if (debug) {
-                            console.log("Google Maps API could not compute distance for location: ", destinationList[i]);
-                        }
+                        log("Google Maps API could not compute distance for location: ", destinationList[i]);
                     }
                 }
-                if (debug) {
-                    console.log("generated distances", distanceMap);
-                }
+                log("generated distances", distanceMap);
                 that.output(distanceMap);
             }
         });
@@ -87,34 +79,34 @@ function Mapper($outputElement, $unprocessableLocations) {
         var keys = Object.keys(data),
             i,
             sortedMap = {},
-            key,
             listItemHTML;
         //supplying comparator to avoid string comparison as we're dealing with numbers
         keys.sort(function(a, b) {
             return Number(a) - Number(b);
         });
-        if (debug) {
-            console.log("sorted distances", keys);
-        }
+        log("sorted distances", keys);
         //now that keys are in proper order, generate new ordered list to prepare for output
-        for(i = 0; i < keys.length; i++) {
-            key = keys[i];
-            sortedMap[key] = sortedMap[key] || [];
+        keys.forEach(function(key) {
+            if (!sortedMap[key]) {
+                sortedMap[key] = [];
+            }
             sortedMap[key].push(data[key]);
-        }
-        if (debug) {
-            console.log("sorted distances map", sortedMap);
-        }
+        });
+        log("sorted distances map", sortedMap);
         Object.getOwnPropertyNames(sortedMap).forEach(function(distanceKey) {
             listItemHTML = '<tr>';
             for(i = 0; i < sortedMap[distanceKey].length; i++) {
-                listItemHTML += '<td>' + sortedMap[distanceKey][i] + '</td><td>' + distanceKey + ' km</td>';
+                listItemHTML += '<td>' + sortedMap[distanceKey][i] + '</td><td>' + distanceKey / 1000 + ' km</td>';
             }
             listItemHTML += '</tr>';
-            if (debug) {
-                console.log('generated row', listItemHTML);
-            }
+            log('generated row', listItemHTML);
             that.$outputElement.append(listItemHTML);
         });
     };
+
+    function log() {
+        if(DEBUG) {
+            console.log(arguments);
+        }
+    }
 }
