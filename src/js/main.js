@@ -6,7 +6,6 @@ $(document).ready(function() {
 /**
  * This is the object that will handle calling out to the Google Maps API and handling the response
  * You can change the initial data list by altering this.initialData
- * Change this.startingAddress to change origin
  *
  * @param $outputElement JQuery reference to output (Must be table!)
  * @param $unprocessableLocations JQuery reference to dump locations in which Google Maps failed to parse (Must be list!)
@@ -16,7 +15,7 @@ function Mapper($outputElement, $unprocessableLocations) {
 
     var DEBUG = false;
     var that = this;
-    this.startingAddress = '510 Victoria, Venice, CA';
+    this.origin = '510 Victoria, Venice, CA';
     this.$outputElement = $outputElement;
     this.$unprocessableLocations = $unprocessableLocations;
     this.initialData = [
@@ -30,51 +29,48 @@ function Mapper($outputElement, $unprocessableLocations) {
     ];
 
     this.run = function() {
-        //this is a separate function in case we want to swap implementations around calculting distances
-        this.getDistanceFromOffice(this.initialData);
+        this.getDistanceFromOrigin(this.initialData, function (destinationAddresses, results) {
+            var i,
+                distanceMap = {},
+                distance,
+                location;
+            for (i = 0; i < results.length; i++) {
+                log(destinationAddresses[i] + ": ", results[i]);
+                if (results[i].status === 'OK') {
+                    distance = results[i].distance.value;
+                    location = destinationAddresses[i];
+                    distanceMap[distance] = distanceMap[distance] || [];
+                    distanceMap[distance].push(location);
+                } else {
+                    that.$unprocessableLocations.append('<li>' + destinationAddresses[i] + '</li>');
+                    log("Google Maps API could not compute distance for location: ", destinationAddresses[i]);
+                }
+            }
+            log("generated distances", distanceMap);
+            //Note: must call that.output(distanceMap) where distanceMap is an object that maps ( distance -> [location] )
+            that.output(distanceMap);
+        });
     };
 
-    //Note: must call that.output(distanceMap) where distanceMap is an object that maps ( distance -> [location] )
-    this.getDistanceFromOffice = function(locationStrings) {
+    this.getDistanceFromOrigin = function(locationStrings, cb) {
         var service = new google.maps.DistanceMatrixService;
         service.getDistanceMatrix({
-            origins: [this.startingAddress],
+            origins: [this.origin],
             destinations: locationStrings,
             travelMode: google.maps.TravelMode.DRIVING,
             unitSystem: google.maps.UnitSystem.METRIC,
             avoidHighways: false,
             avoidTolls: false
         }, function(response, status) {
-            var i,
-                distanceMap = {},
-                distance,
-                location,
-                destinationList;
             if (status !== google.maps.DistanceMatrixStatus.OK) {
                 alert('Error was: ' + status);
             } else {
-                destinationList = response.destinationAddresses;
                 log(response);
-                var results = response.rows[0].elements;
-                for (i = 0; i < results.length; i++) {
-                    log(destinationList[i] + ": ", results[i]);
-                    if (results[i].status === 'OK') {
-                        distance = results[i].distance.value;
-                        location = destinationList[i];
-                        distanceMap[distance] = distanceMap[distance] || [];
-                        distanceMap[distance].push(location);
-                    } else {
-                        that.$unprocessableLocations.append('<li>' + destinationList[i] + '</li>');
-                        log("Google Maps API could not compute distance for location: ", destinationList[i]);
-                    }
-                }
-                log("generated distances", distanceMap);
-                that.output(distanceMap);
+                cb(response.destinationAddresses, response.rows[0].elements);
             }
         });
     };
 
-    //Note: this will not work in IE (yet)
     this.output = function(data) {
         var keys = Object.keys(data),
             i,
